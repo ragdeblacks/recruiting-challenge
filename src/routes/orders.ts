@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
+import { validateNewOrder } from '../lib/order-validation.js';
 import { randomUUID } from 'node:crypto';
 
 export const ordersRouter = Router();
@@ -24,21 +25,15 @@ ordersRouter.get('/:id', (req, res) => {
 });
 
 ordersRouter.post('/', (req, res) => {
-  const body = req.body as {
-    customer_email?: string;
-    total_amount?: number;
-    type?: 'sale' | 'refund';
-  };
-  if (!body.customer_email || typeof body.total_amount !== 'number') {
-    res.status(400).json({ error: 'invalid_body' });
+  const result = validateNewOrder(req.body);
+  if (!result.ok) {
+    res.status(400).json({ error: 'invalid_body', details: result.errors });
     return;
   }
   const order = ordersDal.create({
     id: randomUUID(),
     merchant_id: req.merchantId!,
-    customer_email: body.customer_email,
-    total_amount: body.total_amount,
-    type: body.type ?? 'sale',
+    ...result.value,
     status: 'completed',
   });
   res.status(201).json({ order });

@@ -13,7 +13,8 @@
   through `ordersDal` so we have one place to add auditing, caching, tenancy
   filters, etc. (Not all routes follow this yet — see `metrics.ts`.)
 - **`routes/`** — Express routers, one file per resource.
-- **`lib/`** — utilities. Empty at the moment but reserved for shared helpers.
+- **`lib/`** — shared helpers. Currently: `order-validation.ts` (request-body
+  validation for order creation).
 
 ## Data model
 
@@ -21,6 +22,12 @@ Two tables: `merchants`, `orders`. See `db.ts` for the canonical DDL.
 
 `orders.type` is one of `'sale' | 'refund'`. A refund row records that a sale
 was reversed; it does not by itself reverse the sale row.
+
+The `orders` table is the system's ledger, and the schema enforces what a valid
+entry is: `STRICT` typing plus `CHECK` constraints (positive integer amounts in
+cents, type/status against their catalogs, email shape). Databases created
+before these constraints are migrated on startup; rows that violate the rules
+are moved to `orders_quarantine` for manual review rather than deleted.
 
 ## Open items
 

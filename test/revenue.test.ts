@@ -55,9 +55,11 @@ test('revenue: a range with more refunds than sales is negative', () => {
   assert.equal(ordersDal.revenueByMerchant(MERCHANT, '2026-10-01', '2026-11-01'), -3000);
 });
 
-test('revenue: unknown order types are ignored, not summed', () => {
+test('revenue: unknown order types cannot even enter the ledger', () => {
+  // revenueByMerchant ignores unknown types (ELSE 0) as a safety net, but the
+  // schema CHECK makes such rows impossible to insert in the first place.
   insertOrder({ amount: 1000, type: 'sale' });
-  insertOrder({ amount: 99999, type: 'banana' });
+  assert.throws(() => insertOrder({ amount: 99999, type: 'banana' }), /CHECK/);
   assert.equal(ordersDal.revenueByMerchant(MERCHANT, '2026-10-01', '2026-11-01'), 1000);
 });
 

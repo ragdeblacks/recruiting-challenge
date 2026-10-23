@@ -17,6 +17,13 @@ doesn't exist.
 
 ## `POST /api/orders`
 Body: `{ customer_email, total_amount, type? }`.
+- `customer_email` — must look like an email (`something@something.tld`).
+- `total_amount` — positive integer, in cents. Decimals, zero, negatives and NaN are rejected.
+- `type` — `sale` (default) or `refund`.
+
+Invalid input returns `400` with `{ error: 'invalid_body', details: [...] }` naming
+each problem. The same rules are enforced by the database schema (STRICT + CHECK),
+so no code path can store an invalid order.
 
 ## `GET /api/revenue?from=...&to=...`
 **Net** revenue for the merchant in the date range `[from, to)`: completed sales
