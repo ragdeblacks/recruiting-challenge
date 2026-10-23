@@ -48,15 +48,23 @@ export const ordersDal = {
   },
 
   /**
-   * Sum total_amount over a date range for a merchant.
-   * Used by the revenue endpoint.
+   * Net revenue for a merchant over [from, to): completed sales minus completed refunds.
+   * This is the single definition of "revenue" in the system; any consumer that needs
+   * revenue must go through here instead of summing total_amount directly.
+   *
+   * Rows with an unknown type are ignored (ELSE 0); the schema is expected to make
+   * those impossible — see the input-validation fix.
    */
-  sumAmountByMerchant(merchantId: string, from: string, to: string): number {
+  revenueByMerchant(merchantId: string, from: string, to: string): number {
     const row = db
       .prepare(
-        `SELECT COALESCE(SUM(total_amount), 0) AS total
+        `SELECT COALESCE(SUM(CASE
+             WHEN type = 'sale' THEN total_amount
+             WHEN type = 'refund' THEN -total_amount
+             ELSE 0
+           END), 0) AS total
          FROM orders
-         WHERE merchant_id = ? AND created_at >= ? AND created_at < ?`,
+         WHERE merchant_id = ? AND status = 'completed' AND created_at >= ? AND created_at < ?`,
       )
       .get(merchantId, from, to) as { total: number };
     return row.total;

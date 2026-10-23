@@ -17,7 +17,10 @@ Get a single order by ID.
 Body: `{ customer_email, total_amount, type? }`.
 
 ## `GET /api/revenue?from=...&to=...`
-Total revenue for the merchant in the date range.
+**Net** revenue for the merchant in the date range `[from, to)`: completed sales
+minus completed refunds. A refund counts against the period it occurs in, not the
+period of the original sale, so a range can be negative. `from`/`to` are required
+(`YYYY-MM-DD`); amounts are integer cents in `revenue_cents`.
 
 ## `GET /api/metrics/summary`
 TODO: document fields.
