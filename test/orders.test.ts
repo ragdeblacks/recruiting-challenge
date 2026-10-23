@@ -34,6 +34,24 @@ test('orders DAL: getById returns the order', () => {
     type: 'sale',
     status: 'completed',
   });
-  const got = ordersDal.getById('o2');
+  const got = ordersDal.getById('m_test', 'o2');
   assert.equal(got?.total_amount, 1200);
+});
+
+test('orders DAL: getById never returns another merchant\'s order', () => {
+  initSchema();
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_test', 'Test')`).run();
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_intruder', 'Intruder')`).run();
+  ordersDal.create({
+    id: 'o3',
+    merchant_id: 'm_test',
+    customer_email: 'victim@test.com',
+    total_amount: 9999,
+    type: 'sale',
+    status: 'completed',
+  });
+  // The order exists and its owner can read it...
+  assert.equal(ordersDal.getById('m_test', 'o3')?.id, 'o3');
+  // ...but to any other merchant it must look like it doesn't exist.
+  assert.equal(ordersDal.getById('m_intruder', 'o3'), undefined);
 });

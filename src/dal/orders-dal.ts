@@ -35,8 +35,15 @@ export const ordersDal = {
       .all(merchantId, limit) as OrderRow[];
   },
 
-  getById(id: string): OrderRow | undefined {
-    return db.prepare(`SELECT * FROM orders WHERE id = ?`).get(id) as OrderRow | undefined;
+  /**
+   * Every read is scoped to a merchant: there is deliberately no way to fetch
+   * an order without saying whose it is. An id that exists but belongs to
+   * another merchant returns undefined, same as a missing id.
+   */
+  getById(merchantId: string, id: string): OrderRow | undefined {
+    return db
+      .prepare(`SELECT * FROM orders WHERE merchant_id = ? AND id = ?`)
+      .get(merchantId, id) as OrderRow | undefined;
   },
 
   create(order: Omit<OrderRow, 'created_at'>): OrderRow {
@@ -44,7 +51,7 @@ export const ordersDal = {
       `INSERT INTO orders (id, merchant_id, customer_email, total_amount, type, status)
        VALUES (?, ?, ?, ?, ?, ?)`,
     ).run(order.id, order.merchant_id, order.customer_email, order.total_amount, order.type, order.status);
-    return this.getById(order.id)!;
+    return this.getById(order.merchant_id, order.id)!;
   },
 
   /**

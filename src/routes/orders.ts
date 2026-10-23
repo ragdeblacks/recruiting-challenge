@@ -14,7 +14,8 @@ ordersRouter.get('/', (req, res) => {
 });
 
 ordersRouter.get('/:id', (req, res) => {
-  const order = ordersDal.getById(req.params.id);
+  // 404 (not 403) for another merchant's order: don't reveal that the id exists.
+  const order = ordersDal.getById(req.merchantId!, req.params.id);
   if (!order) {
     res.status(404).json({ error: 'not_found' });
     return;
