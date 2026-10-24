@@ -32,7 +32,11 @@ period of the original sale, so a range can be negative. `from`/`to` are require
 (`YYYY-MM-DD`); amounts are integer cents in `revenue_cents`.
 
 ## `GET /api/metrics/summary`
-TODO: document fields.
+Dashboard summary for the merchant, over **completed sales only** (refunds
+affect revenue, not order counts or averages):
+`{ merchant_id, total_orders, unique_customers, avg_order_value_cents }`.
 
-## `GET /api/metrics/top-customers`
-TODO: document fields.
+## `GET /api/metrics/top-customers?limit=5`
+Customers ranked by **net spend** (completed sales minus completed refunds):
+`{ customers: [{ customer_email, order_count, net_spent_cents }] }`.
+`order_count` counts sales. `limit` defaults to 5, capped at 50.

@@ -55,6 +55,61 @@ export const ordersDal = {
   },
 
   /**
+   * Dashboard summary for a merchant. All three figures are over completed
+   * sales only: a refund is a reversal event, not an order a customer placed,
+   * so it belongs in revenue (where it subtracts) and not in order counts or
+   * the average order value.
+   */
+  summaryByMerchant(merchantId: string): {
+    total_orders: number;
+    unique_customers: number;
+    avg_order_value_cents: number;
+  } {
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS total_orders,
+                COUNT(DISTINCT customer_email) AS unique_customers,
+                COALESCE(AVG(total_amount), 0) AS avg
+         FROM orders
+         WHERE merchant_id = ? AND status = 'completed' AND type = 'sale'`,
+      )
+      .get(merchantId) as { total_orders: number; unique_customers: number; avg: number };
+    return {
+      total_orders: row.total_orders,
+      unique_customers: row.unique_customers,
+      avg_order_value_cents: Math.round(row.avg),
+    };
+  },
+
+  /**
+   * Customers ranked by what they actually left in the business: completed
+   * sales minus completed refunds. A customer who returned everything ranks
+   * at the bottom, not the top. order_count counts their sales.
+   */
+  topCustomersByMerchant(
+    merchantId: string,
+    limit: number,
+  ): Array<{ customer_email: string; order_count: number; net_spent_cents: number }> {
+    const safeLimit = Number.isInteger(limit) && limit > 0 ? Math.min(limit, 50) : 5;
+    return db
+      .prepare(
+        `SELECT customer_email,
+                SUM(CASE WHEN type = 'sale' THEN 1 ELSE 0 END) AS order_count,
+                SUM(CASE WHEN type = 'sale' THEN total_amount ELSE -total_amount END) AS net_spent_cents
+         FROM orders
+         WHERE merchant_id = ? AND status = 'completed'
+         GROUP BY customer_email
+         ORDER BY net_spent_cents DESC
+         LIMIT ?`,
+      )
+      .all(merchantId, safeLimit) as Array<{
+      customer_email: string;
+      order_count: number;
+      net_spent_cents: number;
+    }>;
+  },
+
+  /**
    * Net revenue for a merchant over [from, to): completed sales minus completed refunds.
    * This is the single definition of "revenue" in the system; any consumer that needs
    * revenue must go through here instead of summing total_amount directly.
