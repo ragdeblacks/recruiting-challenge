@@ -21,10 +21,12 @@ export const ordersDal = {
   listByMerchant(merchantId: string, opts: { from?: string; to?: string; limit?: number } = {}): OrderRow[] {
     const limit = opts.limit ?? 100;
     if (opts.from && opts.to) {
+      // from/to are inclusive calendar days (UTC): 'to' covers up to the end
+      // of that day, so the current day's orders are included.
       return db
         .prepare(
           `SELECT * FROM orders
-           WHERE merchant_id = ? AND created_at >= ? AND created_at < ?
+           WHERE merchant_id = ? AND created_at >= ? AND created_at < date(?, '+1 day')
            ORDER BY created_at DESC
            LIMIT ?`,
         )
@@ -110,9 +112,12 @@ export const ordersDal = {
   },
 
   /**
-   * Net revenue for a merchant over [from, to): completed sales minus completed refunds.
+   * Net revenue for a merchant: completed sales minus completed refunds.
    * This is the single definition of "revenue" in the system; any consumer that needs
    * revenue must go through here instead of summing total_amount directly.
+   *
+   * from/to are inclusive calendar days in UTC (YYYY-MM-DD): to='2026-10-23'
+   * covers the whole 23rd, so "today" is never silently excluded.
    *
    * Rows with an unknown type are ignored (ELSE 0); the schema is expected to make
    * those impossible — see the input-validation fix.
@@ -126,7 +131,8 @@ export const ordersDal = {
              ELSE 0
            END), 0) AS total
          FROM orders
-         WHERE merchant_id = ? AND status = 'completed' AND created_at >= ? AND created_at < ?`,
+         WHERE merchant_id = ? AND status = 'completed'
+           AND created_at >= ? AND created_at < date(?, '+1 day')`,
       )
       .get(merchantId, from, to) as { total: number };
     return row.total;

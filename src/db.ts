@@ -26,7 +26,7 @@ const ORDERS_DDL = `
       total_amount INTEGER NOT NULL CHECK (total_amount > 0),
       type TEXT NOT NULL DEFAULT 'sale' CHECK (type IN ('sale', 'refund')),
       status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'pending', 'cancelled')),
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) CHECK (created_at LIKE '____-__-__T%')
     ) STRICT`;
 
 const ORDERS_VALID_ROW = `
@@ -56,12 +56,18 @@ export function initSchema(): void {
  * new schema forbids. Rebuild it under the strict DDL; rows that violate the
  * rules are moved to orders_quarantine for review instead of being dropped —
  * a weird type may be a capture error on a real sale, so we keep the evidence.
+ *
+ * created_at is also normalized during the rebuild: SQLite's CURRENT_TIMESTAMP
+ * format ('YYYY-MM-DD HH:MM:SS', UTC with no marker) becomes ISO-8601 with 'T'
+ * and 'Z', so lexicographic ordering is reliable and browsers stop parsing a
+ * UTC instant as local time. The strftime DEFAULT in the DDL doubles as the
+ * migration marker: a table whose SQL lacks it is on an older schema.
  */
 function migrateLegacyOrders(): void {
   const master = db
     .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'orders'`)
     .get() as { sql: string } | undefined;
-  if (!master || master.sql.includes('STRICT')) return;
+  if (!master || master.sql.includes('strftime')) return;
 
   db.exec(`
     BEGIN;
@@ -82,7 +88,9 @@ function migrateLegacyOrders(): void {
     ALTER TABLE orders RENAME TO orders_legacy;
     ${ORDERS_DDL.replace('IF NOT EXISTS orders', 'orders')};
     INSERT INTO orders (id, merchant_id, customer_email, total_amount, type, status, created_at)
-      SELECT id, merchant_id, customer_email, total_amount, type, status, created_at
+      SELECT id, merchant_id, customer_email, total_amount, type, status,
+             CASE WHEN created_at LIKE '%T%' THEN created_at
+                  ELSE replace(created_at, ' ', 'T') || 'Z' END
       FROM orders_legacy WHERE ${ORDERS_VALID_ROW};
     DROP TABLE orders_legacy;
 

@@ -8,7 +8,8 @@ All endpoints require the `X-Merchant-Id` header.
 No auth. Returns `{ ok: true }`.
 
 ## `GET /api/orders`
-List orders for the authenticated merchant. Optional query: `from`, `to`, `limit`.
+List orders for the authenticated merchant. Optional query: `from`, `to`
+(inclusive calendar days, UTC, `YYYY-MM-DD`) and `limit`.
 
 ## `GET /api/orders/:id`
 Get a single order by ID. Scoped to the authenticated merchant: an id that
@@ -26,10 +27,11 @@ each problem. The same rules are enforced by the database schema (STRICT + CHECK
 so no code path can store an invalid order.
 
 ## `GET /api/revenue?from=...&to=...`
-**Net** revenue for the merchant in the date range `[from, to)`: completed sales
-minus completed refunds. A refund counts against the period it occurs in, not the
-period of the original sale, so a range can be negative. `from`/`to` are required
-(`YYYY-MM-DD`); amounts are integer cents in `revenue_cents`.
+**Net** revenue for the merchant: completed sales minus completed refunds.
+`from`/`to` are required and are **inclusive calendar days in UTC**
+(`YYYY-MM-DD`) — a range ending today includes today's orders. A refund counts
+against the period it occurs in, not the period of the original sale, so a
+range can be negative. Amounts are integer cents in `revenue_cents`.
 
 ## `GET /api/metrics/summary`
 Dashboard summary for the merchant, over **completed sales only** (refunds

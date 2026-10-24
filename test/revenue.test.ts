@@ -69,11 +69,30 @@ test('revenue: only completed orders count', () => {
   assert.equal(ordersDal.revenueByMerchant(MERCHANT, '2026-10-01', '2026-11-01'), 1000);
 });
 
-test('revenue: respects the [from, to) date range', () => {
-  insertOrder({ amount: 1000, createdAt: '2026-09-30T23:59:59.000Z' });
-  insertOrder({ amount: 2000, createdAt: '2026-10-15T12:00:00.000Z' });
-  insertOrder({ amount: 4000, createdAt: '2026-11-01T00:00:00.000Z' });
-  assert.equal(ordersDal.revenueByMerchant(MERCHANT, '2026-10-01', '2026-11-01'), 2000);
+test('revenue: from and to are inclusive calendar days', () => {
+  insertOrder({ amount: 1000, createdAt: '2026-09-30T23:59:59.000Z' }); // day before "from" — out
+  insertOrder({ amount: 2000, createdAt: '2026-10-01T00:00:00.000Z' }); // first instant of "from" — in
+  insertOrder({ amount: 4000, createdAt: '2026-10-31T23:59:59.000Z' }); // last instant of "to" — in
+  insertOrder({ amount: 8000, createdAt: '2026-11-01T00:00:00.000Z' }); // day after "to" — out
+  assert.equal(ordersDal.revenueByMerchant(MERCHANT, '2026-10-01', '2026-10-31'), 6000);
+});
+
+test('revenue: a range ending today includes orders created right now', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  insertOrder({ amount: 12345, createdAt: new Date().toISOString() });
+  assert.equal(ordersDal.revenueByMerchant(MERCHANT, today, today), 12345);
+});
+
+test('created_at: new orders are stored as ISO-8601 UTC (T and Z)', () => {
+  const created = ordersDal.create({
+    id: crypto.randomUUID(),
+    merchant_id: MERCHANT,
+    customer_email: 'formato@test.com',
+    total_amount: 100,
+    type: 'sale',
+    status: 'completed',
+  });
+  assert.match(created.created_at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
 });
 
 test('revenue: never mixes merchants', () => {

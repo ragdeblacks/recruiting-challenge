@@ -6,10 +6,11 @@ export const revenueRouter = Router();
 /**
  * GET /api/revenue?from=YYYY-MM-DD&to=YYYY-MM-DD
  *
- * Returns net revenue for the authenticated merchant in [from, to):
- * completed sales minus completed refunds. A refund counts against the
- * period it occurs in, not the period of the original sale, so a range
- * with more refunds than sales yields a negative number.
+ * Returns net revenue for the authenticated merchant: completed sales minus
+ * completed refunds. from/to are inclusive calendar days (UTC), so a range
+ * ending today includes today's orders. A refund counts against the period
+ * it occurs in, not the period of the original sale, so a range with more
+ * refunds than sales yields a negative number.
  */
 revenueRouter.get('/', (req, res) => {
   const from = typeof req.query.from === 'string' ? req.query.from : undefined;

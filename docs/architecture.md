@@ -26,9 +26,14 @@ was reversed; it does not by itself reverse the sale row.
 
 The `orders` table is the system's ledger, and the schema enforces what a valid
 entry is: `STRICT` typing plus `CHECK` constraints (positive integer amounts in
-cents, type/status against their catalogs, email shape). Databases created
-before these constraints are migrated on startup; rows that violate the rules
-are moved to `orders_quarantine` for manual review rather than deleted.
+cents, type/status against their catalogs, email shape, ISO-8601 timestamps).
+Databases created before these constraints are migrated on startup; rows that
+violate the rules are moved to `orders_quarantine` for manual review rather
+than deleted.
+
+`created_at` is stored as ISO-8601 UTC (`2026-10-24T06:00:33.000Z`). Date-range
+parameters across the API are inclusive calendar days in UTC; "a day" means a
+UTC day — per-merchant timezones are an open item.
 
 ## Open items
 
