@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
 import { validateNewOrder } from '../lib/order-validation.js';
+import { validateOrderSearch } from '../lib/search-validation.js';
 import { randomUUID } from 'node:crypto';
 
 export const ordersRouter = Router();
@@ -12,6 +13,17 @@ ordersRouter.get('/', (req, res) => {
     limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
   });
   res.json({ orders });
+});
+
+// Registered before '/:id' so Express doesn't treat "search" as an order id.
+ordersRouter.get('/search', (req, res) => {
+  const result = validateOrderSearch(req.query);
+  if (!result.ok) {
+    res.status(400).json({ error: 'invalid_query', details: result.errors });
+    return;
+  }
+  const { orders, total } = ordersDal.searchByMerchant(req.merchantId!, result.value);
+  res.json({ orders, total, page: result.value.page, page_size: result.value.pageSize });
 });
 
 ordersRouter.get('/:id', (req, res) => {

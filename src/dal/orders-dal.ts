@@ -1,4 +1,5 @@
 import { db } from '../db.js';
+import type { OrderSearchFilters } from '../lib/search-validation.js';
 
 export interface OrderRow {
   id: string;
@@ -42,6 +43,59 @@ export const ordersDal = {
    * an order without saying whose it is. An id that exists but belongs to
    * another merchant returns undefined, same as a missing id.
    */
+  /**
+   * Filtered order search, always scoped to one merchant. Email is a
+   * case-insensitive "contains" match (LIKE wildcards in the input are
+   * escaped so they match literally). Dates are inclusive calendar days
+   * (fix-5 semantics). Results are newest-first with id as tie-breaker so
+   * page-number pagination never repeats or skips rows for a fixed dataset.
+   */
+  searchByMerchant(merchantId: string, f: OrderSearchFilters): { orders: OrderRow[]; total: number } {
+    const where: string[] = ['merchant_id = ?'];
+    const params: unknown[] = [merchantId];
+    if (f.email !== undefined) {
+      where.push(`customer_email LIKE ? ESCAPE '\\'`);
+      params.push(`%${f.email.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+    }
+    if (f.type !== undefined) {
+      where.push('type = ?');
+      params.push(f.type);
+    }
+    if (f.status !== undefined) {
+      where.push('status = ?');
+      params.push(f.status);
+    }
+    if (f.from !== undefined) {
+      where.push('created_at >= ?');
+      params.push(f.from);
+    }
+    if (f.to !== undefined) {
+      where.push(`created_at < date(?, '+1 day')`);
+      params.push(f.to);
+    }
+    if (f.minAmount !== undefined) {
+      where.push('total_amount >= ?');
+      params.push(f.minAmount);
+    }
+    if (f.maxAmount !== undefined) {
+      where.push('total_amount <= ?');
+      params.push(f.maxAmount);
+    }
+    const whereSql = where.join(' AND ');
+
+    const { total } = db
+      .prepare(`SELECT COUNT(*) AS total FROM orders WHERE ${whereSql}`)
+      .get(...params) as { total: number };
+    const orders = db
+      .prepare(
+        `SELECT * FROM orders WHERE ${whereSql}
+         ORDER BY created_at DESC, id DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...params, f.pageSize, (f.page - 1) * f.pageSize) as OrderRow[];
+    return { orders, total };
+  },
+
   getById(merchantId: string, id: string): OrderRow | undefined {
     return db
       .prepare(`SELECT * FROM orders WHERE merchant_id = ? AND id = ?`)

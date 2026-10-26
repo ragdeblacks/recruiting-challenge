@@ -11,6 +11,26 @@ No auth. Returns `{ ok: true }`.
 List orders for the authenticated merchant. Optional query: `from`, `to`
 (inclusive calendar days, UTC, `YYYY-MM-DD`) and `limit`.
 
+## `GET /api/orders/search`
+Filtered order search for the authenticated merchant. All params optional:
+
+| Param | Meaning |
+|---|---|
+| `email` | contains match on customer email, case-insensitive |
+| `type` | `sale` or `refund` |
+| `status` | `completed`, `pending` or `cancelled` |
+| `from`, `to` | inclusive calendar days, UTC (`YYYY-MM-DD`) |
+| `min_amount`, `max_amount` | integer cents, inclusive |
+| `page` | 1-based page number (default 1) |
+| `page_size` | rows per page (default 50, max 100) |
+
+Returns `{ orders, total, page, page_size }`, newest first (ties broken by id,
+so pages never repeat or skip rows). A page past the end returns an empty list.
+Invalid params (unknown type/status, malformed date, `min_amount > max_amount`,
+bad page) return `400` with `{ error: 'invalid_query', details: [...] }`.
+
+Example: `/api/orders/search?email=ana&type=sale&from=2026-10-01&to=2026-10-26&min_amount=10000&page=1`
+
 ## `GET /api/orders/:id`
 Get a single order by ID. Scoped to the authenticated merchant: an id that
 belongs to another merchant returns `404`, indistinguishable from an id that

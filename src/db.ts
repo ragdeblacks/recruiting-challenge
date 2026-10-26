@@ -45,8 +45,10 @@ export function initSchema(): void {
 
     ${ORDERS_DDL};
 
-    CREATE INDEX IF NOT EXISTS idx_orders_merchant ON orders(merchant_id);
-    CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+    DROP INDEX IF EXISTS idx_orders_merchant;
+    DROP INDEX IF EXISTS idx_orders_created;
+    CREATE INDEX IF NOT EXISTS idx_orders_merchant_created ON orders(merchant_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_orders_merchant_email ON orders(merchant_id, customer_email);
   `);
   migrateLegacyOrders();
 }
@@ -94,8 +96,8 @@ function migrateLegacyOrders(): void {
       FROM orders_legacy WHERE ${ORDERS_VALID_ROW};
     DROP TABLE orders_legacy;
 
-    CREATE INDEX IF NOT EXISTS idx_orders_merchant ON orders(merchant_id);
-    CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+    CREATE INDEX IF NOT EXISTS idx_orders_merchant_created ON orders(merchant_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_orders_merchant_email ON orders(merchant_id, customer_email);
     COMMIT;
   `);
   const q = db.prepare(`SELECT COUNT(*) AS n FROM orders_quarantine`).get() as { n: number };
