@@ -17,6 +17,28 @@
       th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ccc4; }
       th { font-weight: 600; opacity: 0.8; }
       .muted { opacity: 0.6; }
+      .filter-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+        border: 1px solid #ccc4; border-radius: 8px; padding: 0.75rem; margin-top: 0.5rem; }
+      .filter-bar input { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid #ccc8;
+        border-radius: 6px; background: transparent; color: inherit; }
+      .filter-bar input[type="search"] { min-width: 14rem; }
+      .filter-bar input[type="number"] { width: 6.5rem; }
+      .pills { display: inline-flex; gap: 0.25rem; }
+      .pill { font: inherit; padding: 0.3rem 0.7rem; border: 1px solid #ccc8; border-radius: 999px;
+        background: transparent; color: inherit; cursor: pointer; opacity: 0.75; }
+      .pill.active { opacity: 1; font-weight: 600; border-color: currentColor; }
+      .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; min-height: 1.6rem; }
+      .chip { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;
+        border: 1px solid #ccc8; border-radius: 999px; padding: 0.15rem 0.6rem; }
+      .chip button { font: inherit; border: none; background: none; color: inherit; cursor: pointer; opacity: 0.7; }
+      .results-meta { margin-top: 0.75rem; font-size: 0.9rem; opacity: 0.75; }
+      .pagination { display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end; margin-top: 0.75rem; }
+      .pagination button { font: inherit; padding: 0.3rem 0.8rem; border: 1px solid #ccc8;
+        border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+      .pagination button:disabled { opacity: 0.35; cursor: default; }
+      #empty-state { text-align: center; padding: 2rem 0; opacity: 0.7; }
+      #empty-state button { font: inherit; border: none; background: none; color: inherit;
+        text-decoration: underline; cursor: pointer; }
     </style>
   </head>
   <body>
@@ -43,13 +65,47 @@
     </section>
 
     <section>
-      <h2>Recent orders</h2>
+      <h2>Orders</h2>
+      <div class="filter-bar">
+        <input id="f-email" type="search" placeholder="Customer email…" autocomplete="off" />
+        <div class="pills" id="f-type" role="group" aria-label="Order type">
+          <button class="pill" data-type="">All</button>
+          <button class="pill" data-type="sale">Sales</button>
+          <button class="pill" data-type="refund">Refunds</button>
+        </div>
+        <div class="pills" id="f-dates" role="group" aria-label="Date range">
+          <button class="pill" data-preset="all">All time</button>
+          <button class="pill" data-preset="today">Today</button>
+          <button class="pill" data-preset="7d">7 days</button>
+          <button class="pill" data-preset="30d">30 days</button>
+          <button class="pill" data-preset="custom">Custom</button>
+        </div>
+        <span id="custom-dates" hidden>
+          <input id="f-from" type="date" aria-label="From" /> –
+          <input id="f-to" type="date" aria-label="To" />
+        </span>
+        <span>
+          <input id="f-min" type="number" min="0" step="0.01" placeholder="Min $" />
+          <input id="f-max" type="number" min="0" step="0.01" placeholder="Max $" />
+        </span>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="results-meta" id="result-count"></div>
       <table>
         <thead>
           <tr><th>Date</th><th>Customer</th><th>Type</th><th>Amount</th></tr>
         </thead>
         <tbody id="orders-tbody"></tbody>
       </table>
+      <div id="empty-state" hidden>
+        <p>No orders match these filters.</p>
+        <button id="empty-clear">Clear all filters</button>
+      </div>
+      <div class="pagination">
+        <button id="page-prev">‹ Prev</button>
+        <span id="page-label"></span>
+        <button id="page-next">Next ›</button>
+      </div>
     </section>
 
     <script src="/app.js"></script>
