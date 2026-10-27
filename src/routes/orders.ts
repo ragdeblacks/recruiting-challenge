@@ -1,17 +1,30 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
 import { validateNewOrder } from '../lib/order-validation.js';
-import { validateOrderSearch } from '../lib/search-validation.js';
+import { validateOrderSearch, isCalendarDay } from '../lib/search-validation.js';
 import { randomUUID } from 'node:crypto';
 
 export const ordersRouter = Router();
 
 ordersRouter.get('/', (req, res) => {
-  const orders = ordersDal.listByMerchant(req.merchantId!, {
-    from: typeof req.query.from === 'string' ? req.query.from : undefined,
-    to: typeof req.query.to === 'string' ? req.query.to : undefined,
-    limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
-  });
+  const errors: string[] = [];
+  let limit: number | undefined;
+  if (req.query.limit !== undefined) {
+    limit = Number(req.query.limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      errors.push('limit must be an integer between 1 and 100');
+    }
+  }
+  const from = typeof req.query.from === 'string' ? req.query.from : undefined;
+  const to = typeof req.query.to === 'string' ? req.query.to : undefined;
+  if (from !== undefined && !isCalendarDay(from)) errors.push('from must be a calendar day (YYYY-MM-DD)');
+  if (to !== undefined && !isCalendarDay(to)) errors.push('to must be a calendar day (YYYY-MM-DD)');
+  if (from && to && from > to) errors.push('from must not be after to');
+  if (errors.length > 0) {
+    res.status(400).json({ error: 'invalid_query', details: errors });
+    return;
+  }
+  const orders = ordersDal.listByMerchant(req.merchantId!, { from, to, limit });
   res.json({ orders });
 });
 

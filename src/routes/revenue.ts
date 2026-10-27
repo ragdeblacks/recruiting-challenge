@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
+import { isCalendarDay } from '../lib/search-validation.js';
 
 export const revenueRouter = Router();
 
@@ -17,6 +18,14 @@ revenueRouter.get('/', (req, res) => {
   const to = typeof req.query.to === 'string' ? req.query.to : undefined;
   if (!from || !to) {
     res.status(400).json({ error: 'missing_date_range', detail: 'from and to are required (YYYY-MM-DD)' });
+    return;
+  }
+  // A malformed date must be a 400, never a silent $0 (same contract as /search).
+  if (!isCalendarDay(from) || !isCalendarDay(to) || from > to) {
+    res.status(400).json({
+      error: 'invalid_date_range',
+      detail: 'from and to must be calendar days (YYYY-MM-DD) with from not after to',
+    });
     return;
   }
 

@@ -19,7 +19,7 @@ const pagePrev = document.getElementById('page-prev');
 const pageNext = document.getElementById('page-next');
 const pageLabel = document.getElementById('page-label');
 
-const PAGE_SIZE = 10; // dashboard page size; the API supports up to 100
+const PAGE_SIZE = 50; // matches the API default page size
 
 // Search state. Dates are UTC calendar days (API contract).
 const state = { email: '', type: '', preset: 'all', from: '', to: '', min: '', max: '', page: 1 };

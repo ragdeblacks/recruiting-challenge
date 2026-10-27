@@ -9,7 +9,9 @@ No auth. Returns `{ ok: true }`.
 
 ## `GET /api/orders`
 List orders for the authenticated merchant. Optional query: `from`, `to`
-(inclusive calendar days, UTC, `YYYY-MM-DD`) and `limit`.
+(inclusive calendar days, UTC, `YYYY-MM-DD`) and `limit` (integer 1–100,
+default 100). Invalid params return `400` with details. For filtered or
+paginated listing prefer `GET /api/orders/search`.
 
 ## `GET /api/orders/search`
 Filtered order search for the authenticated merchant. All params optional:
@@ -49,7 +51,8 @@ so no code path can store an invalid order.
 ## `GET /api/revenue?from=...&to=...`
 **Net** revenue for the merchant: completed sales minus completed refunds.
 `from`/`to` are required and are **inclusive calendar days in UTC**
-(`YYYY-MM-DD`) — a range ending today includes today's orders. A refund counts
+(`YYYY-MM-DD`) — a range ending today includes today's orders. A missing or
+malformed date, or `from` after `to`, returns `400` (never a silent `0`). A refund counts
 against the period it occurs in, not the period of the original sale, so a
 range can be negative. Amounts are integer cents in `revenue_cents`.
 
